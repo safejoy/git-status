@@ -852,3 +852,83 @@
                 const post = this.posts.find(p => p.id === postId);
                 if (post) {
                     if (post.liked) {
+                        post.likes--;
+                        post.liked = false;
+                    } else {
+                        post.likes++;
+                        post.liked = true;
+                        this.showNotification('Post liked!');
+                    }
+                    this.savePosts();
+                    this.updateStats();
+                    this.renderPosts();
+                }
+            }
+
+            toggleRetweet(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (post) {
+                    if (post.retweeted) {
+                        post.retweets--;
+                        post.retweeted = false;
+                    } else {
+                        post.retweets++;
+                        post.retweeted = true;
+                        this.showNotification('Post retweeted!');
+                    }
+                    this.savePosts();
+                    this.renderPosts();
+                }
+            }
+
+            deletePost(postId) {
+                const postIndex = this.posts.findIndex(p => p.id === postId);
+                if (postIndex !== -1) {
+                    this.posts.splice(postIndex, 1);
+                    this.savePosts();
+                    this.updateStats();
+                    this.renderPosts();
+                    this.showNotification('Post deleted!');
+                }
+            }
+
+            updateStats() {
+                this.postCountEl.textContent = this.posts.length;
+                const totalLikes = this.posts.reduce((sum, post) => sum + post.likes, 0);
+                this.likeCountEl.textContent = totalLikes;
+            }
+
+            formatTime(timestamp) {
+                const now = new Date();
+                const diff = now - timestamp;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+
+                if (days > 0) return `${days}d`;
+                if (hours > 0) return `${hours}h`;
+                if (minutes > 0) return `${minutes}m`;
+                return 'now';
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            showNotification(message, type = 'success') {
+                this.notification.textContent = message;
+                this.notification.className = `notification ${type}`;
+                this.notification.classList.add('show');
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Initialize the micro blog
+        const microBlog = new GitHubMicroBlog();
+    </script>
+</body>
+</html>
