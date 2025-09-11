@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Updates - GitHub Micro-Blog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #2d1b69 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar h2 {
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            color: #1d9bf0;
+        }
+
+        .search-container {
+            margin-bottom: 32px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: #8899a6;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #1d9bf0;
+            box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+        }
+
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-result-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .search-result-content {
+            font-size: 0.9rem;
+            color: #ffffff;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .search-result-date {
+            font-size: 0.8rem;
+            color: #8899a6;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            animation: slideIn 0.8s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1d9bf0 0%, #8b5cf6 100%);
+            padding: 32px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            50% { transform: translate(-50%, -50%) rotate(180deg); }
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .toggle-sidebar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(29, 155, 240, 0.2);
+            color: #1d9bf0;
+            border: 2px solid rgba(29, 155, 240, 0.3);
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-sidebar:hover {
+            background: rgba(29, 155, 240, 0.3);
+        }
+
+        .auth-section {
+            padding: 32px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auth-button {
+            background: linear-gradient(135deg, #24292f 0%, #0969da 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .auth-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(9, 105, 218, 0.3);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #1d9bf0;
+        }
+
+        .user-details h3 {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+        }
+
+        .user-details p {
+            color: #8899a6;
+            font-size: 0.95rem;
+        }
+
+        .logout-btn {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-left: auto;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(220, 38, 38, 0.3);
+        }
+
+        .compose {
+            padding: 32px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .compose-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .textarea-container {
+            position: relative;
+        }
+
+        .compose textarea {
+            width: 100%;
+            min-height: 120px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+
+        .compose textarea::placeholder {
+            color: #8899a6;
+        }
+
+        .compose textarea:focus {
+            outline: none;
+            border-color: #1d9bf0;
+            box-shadow: 0 0 0 4px rgba(29, 155, 240, 0.1);
+            transform: scale(1.01);
+        }
+
+        .char-count {
+            position: absolute;
+            bottom: 16px;
+            right: 20px;
+            font-size: 0.9rem;
+            color: #8899a6;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .char-count.warning {
+            color: #f87171;
+        }
+
+        .image-upload-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .image-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .image-upload input[type="file"] {
+            display: none;
+        }
+
+        .image-upload-btn {
+            background: rgba(29, 155, 240, 0.1);
+            color: #1d9bf0;
+            border: 2px dashed rgba(29, 155, 240, 0.3);
+            padding: 16px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .image-upload-btn:hover {
+            background: rgba(29, 155, 240, 0.15);
+            border-color: rgba(29, 155, 240, 0.5);
+        }
+
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .preview-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 200px;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: auto;
+            max-height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .compose-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .post-btn {
+            background: linear-gradient(135deg, #1d9bf0 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 24px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.05rem;
+            min-width: 120px;
+        }
+
+        .post-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(29, 155, 240, 0.3);
+        }
+
+        .post-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats {
+            display: flex;
+            gap: 24px;
+            font-size: 0.95rem;
+            color: #8899a6;
+        }
+
+        .feed {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .feed::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .feed::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .feed::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #1d9bf0, #8b5cf6);
+            border-radius: 10px;
+        }
+
+        .post {
+            padding: 24px 32px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .post:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .post:last-child {
+            border-bottom: none;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 16px;
+        }
+
+        .post-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid #1d9bf0;
+        }
+
+        .post-info h3 {
+            font-size: 1.1rem;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .post-time {
+            color: #8899a6;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .post-time:hover {
+            color: #1d9bf0;
+            text-decoration: underline;
+        }
+
+        .post-content {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            color: #ffffff;
+            margin-bottom: 16px;
+            word-wrap: break-word;
+        }
+
+        .post-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .post-images img {
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .post-images img:hover {
+            transform: scale(1.02);
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 32px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #8899a6;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .action-btn:hover {
+            background: rgba(29, 155, 240, 0.1);
+            color: #1d9bf0;
+        }
+
+        .action-btn.liked {
+            color: #f91880;
+        }
+
+        .permalink-view {
+            padding: 32px;
+        }
+
+        .permalink-header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .permalink-header h2 {
+            color: #1d9bf0;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            background: rgba(29, 155, 240, 0.1);
+            color: #1d9bf0;
+            border: 2px solid rgba(29, 155, 240, 0.3);
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(29, 155, 240, 0.2);
+        }
+
+        .comments-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 32px;
+            color: #8899a6;
+        }
+
+        .empty-state h3 {
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+            color: #1d9bf0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: linear-gradient(135deg, #00ba7c, #10b981);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            font-weight: 600;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 999;
+            }
+            
+            .main-content {
+                padding: 10px;
+            }
+            
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .compose, .post, .auth-section {
+                padding: 24px 20px;
+            }
+
+            .stats {
+                gap: 16px;
+                font-size: 0.9rem;
+            }
+
+            .compose-bottom {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .post-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar" id="sidebar">
+            <h2>🔍 Search Posts</h2>
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search your posts...">
+            </div>
+            <div class="search-results" id="searchResults">
+                <div style="text-align: center; color: #8899a6; padding: 20px;">
+                    Type to search through your posts
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <button class="toggle-sidebar" id="toggleSidebar">☰</button>
+            
+            <div class="container">
+                <div class="header">
+                    <h1>Status Updates</h1>
+                    <p>Share your thoughts with the world</p>
+                </div>
+                
+                <div class="auth-section" id="authSection">
+                    <a href="#" class="auth-button" id="githubAuth">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        Sign in with GitHub
+                    </a>
+                </div>
+
+                <div class="user-info hidden" id="userInfo">
+                    <img class="user-avatar" id="userAvatar" src="" alt="User Avatar">
+                    <div class="user-details">
+                        <h3 id="userName"></h3>
+                        <p id="userHandle"></p>
+                    </div>
+                    <button class="logout-btn" id="logoutBtn">Sign out</button>
+                </div>
+                
+                <div class="compose hidden" id="composeSection">
+                    <form class="compose-form" id="composeForm">
+                        <div class="textarea-container">
+                            <textarea 
+                                id="postContent" 
+                                placeholder="What's happening?"
+                                maxlength="280"
+                            ></textarea>
+                            <div class="char-count" id="charCount">280</div>
+                        </div>
+                        
+                        <div class="image-upload-container">
+                            <div class="image-upload">
+                                <input type="file" id="imageUpload" multiple accept="image/*">
+                                <label for="imageUpload" class="image-upload-btn">
+                                    📸 Add Photos
+                                </label>
+                            </div>
+                            <div class="image-preview" id="imagePreview"></div>
+                        </div>
+                        
+                        <div class="compose-bottom">
+                            <div class="stats">
+                                <span>Posts: <strong id="postCount">0</strong></span>
+                                <span>Total Likes: <strong id="likeCount">0</strong></span>
+                            </div>
+                            <button type="submit" class="post-btn" id="postBtn">Post</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="feed" id="feed">
+                    <div class="empty-state">
+                        <h3>Welcome!</h3>
+                        <p>Sign in with GitHub to start sharing your status updates.</p>
+                    </div>
+                </div>
+
+                <div class="permalink-view hidden" id="permalinkView">
+                    <button class="back-btn" id="backBtn">← Back to Feed</button>
+                    <div class="permalink-header">
+                        <h2>Status Permalink</h2>
+                    </div>
+                    <div id="permalinkPost"></div>
+                    <div class="comments-section">
+                        <div id="disqus_thread"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        class GitHubMicroBlog {
+            constructor() {
+                // Configuration - CHANGE THESE VALUES
+                this.API_BASE_URL = 'https://your-api-domain.com/api'; // Your backend API URL
+                this.GITHUB_CLIENT_ID = 'your_github_app_client_id'; // Your GitHub App Client ID
+                this.ALLOWED_USERNAME = 'yourusername'; // Your GitHub username
+                this.DISQUS_SHORTNAME = 'your-disqus-shortname'; // Your Disqus shortname
+                this.SITE_URL = 'https://yourusername.github.io/status'; // Your site URL
+                
+                this.currentUser = null;
+                this.posts = [];
+                this.selectedImages = [];
+                this.currentView = 'feed';
+                this.currentPostId = null;
+                this.searchTimeout = null;
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.checkAuthState();
+                this.loadPosts();
+                this.checkPermalink();
+            }
+
+            initializeElements() {
+                this.sidebar = document.getElementById('sidebar');
+                this.toggleSidebar = document.getElementById('toggleSidebar');
+                this.searchInput = document.getElementById('searchInput');
+                this.searchResults = document.getElementById('searchResults');
+                this.authSection = document.getElementById('authSection');
+                this.userInfo = document.getElementById('userInfo');
+                this.composeSection = document.getElementById('composeSection');
+                this.githubAuth = document.getElementById('githubAuth');
+                this.logoutBtn = document.getElementById('logoutBtn');
+                this.userAvatar = document.getElementById('userAvatar');
+                this.userName = document.getElementById('userName');
+                this.userHandle = document.getElementById('userHandle');
+                this.form = document.getElementById('composeForm');
+                this.textarea = document.getElementById('postContent');
+                this.charCount = document.getElementById('charCount');
+                this.postBtn = document.getElementById('postBtn');
+                this.imageUpload = document.getElementById('imageUpload');
+                this.imagePreview = document.getElementById('imagePreview');
+                this.feed = document.getElementById('feed');
+                this.postCountEl = document.getElementById('postCount');
+                this.likeCountEl = document.getElementById('likeCount');
+                this.notification = document.getElementById('notification');
+                this.permalinkView = document.getElementById('permalinkView');
+                this.permalinkPost = document.getElementById('permalinkPost');
+                this.backBtn = document.getElementById('backBtn');
+            }
+
+            bindEvents() {
+                this.toggleSidebar.addEventListener('click', () => this.toggleSidebarVisibility());
+                this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                this.githubAuth.addEventListener('click', (e) => this.handleGitHubAuth(e));
+                this.logoutBtn.addEventListener('click', () => this.logout());
+                this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+                this.textarea.addEventListener('input', () => this.updateCharCount());
+                this.imageUpload.addEventListener('change', (e) => this.handleImageUpload(e));
+                this.backBtn.addEventListener('click', () => this.showFeed());
+                
+                // Check for OAuth callback
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                if (code) {
+                    this.handleOAuthCallback(code);
+                }
+            }
+
+            checkPermalink() {
+                const path = window.location.pathname;
+                const match = path.match(/\/status\/(\d+)$/);
+                if (match) {
+                    this.currentPostId = match[1];
+                    this.showPermalink(this.currentPostId);
+                }
+            }
+
+            toggleSidebarVisibility() {
+                this.sidebar.classList.toggle('hidden');
+            }
+
+            async handleSearch(query) {
+                clearTimeout(this.searchTimeout);
+                
+                if (!query.trim()) {
+                    this.searchResults.innerHTML = '<div style="text-align: center; color: #8899a6; padding: 20px;">Type to search through your posts</div>';
+                    return;
+                }
+
+                this.searchTimeout = setTimeout(async () => {
+                    try {
+                        const results = await this.searchPosts(query);
+                        this.renderSearchResults(results);
+                    } catch (error) {
+                        console.error('Search error:', error);
+                        this.searchResults.innerHTML = '<div style="text-align: center; color: #ff6b6b; padding: 20px;">Search failed</div>';
+                    }
+                }, 300);
+            }
+
+            async searchPosts(query) {
+                // In production, this would call your API
+                // For demo, search local posts
+                const filteredPosts = this.posts.filter(post => 
+                    post.content.toLowerCase().includes(query.toLowerCase())
+                );
+                return filteredPosts.slice(0, 10); // Limit results
+            }
+
+            renderSearchResults(results) {
+                if (results.length === 0) {
+                    this.searchResults.innerHTML = '<div style="text-align: center; color: #8899a6; padding: 20px;">No posts found</div>';
+                    return;
+                }
+
+                this.searchResults.innerHTML = results.map(post => `
+                    <div class="search-result-item" onclick="microBlog.showPermalink('${post.id}')">
+                        <div class="search-result-content">${this.escapeHtml(post.content)}</div>
+                        <div class="search-result-date">${this.formatTime(new Date(post.timestamp))}</div>
+                    </div>
+                `).join('');
+            }
+
+            handleGitHubAuth(e) {
+                e.preventDefault();
+                const redirectUri = this.SITE_URL;
+                const authUrl = `https://github.com/login/oauth/authorize?client_id=${this.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=public_repo`;
+                window.location.href = authUrl;
+            }
+
+            async handleOAuthCallback(code) {
+                try {
+                    // Exchange code for access token via your backend API
+                    const response = await fetch(`${this.API_BASE_URL}/auth/github`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code, redirect_uri: this.SITE_URL })
+                    });
+
+                    if (!response.ok) throw new Error('Authentication failed');
+
+                    const data = await response.json();
+                    
+                    if (data.user.login !== this.ALLOWED_USERNAME) {
+                        throw new Error('Unauthorized user');
+                    }
+
+                    this.currentUser = data.user;
+                    localStorage.setItem('github_user', JSON.stringify(this.currentUser));
+                    localStorage.setItem('access_token', data.access_token);
+                    
+                    this.updateAuthState();
+                    this.showNotification('Successfully signed in!');
+                    
+                    // Clean up URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (error) {
+                    this.showNotification('Authentication failed: ' + error.message, 'error');
+                    console.error('Auth error:', error);
+                }
+            }
+
+            checkAuthState() {
+                const storedUser = localStorage.getItem('github_user');
+                const accessToken = localStorage.getItem('access_token');
+                
+                if (storedUser && accessToken) {
+                    this.currentUser = JSON.parse(storedUser);
+                    this.updateAuthState();
+                }
+            }
+
+            updateAuthState() {
+                if (this.currentUser && this.currentUser.login === this.ALLOWED_USERNAME) {
+                    this.authSection.classList.add('hidden');
+                    this.userInfo.classList.remove('hidden');
+                    this.composeSection.classList.remove('hidden');
+                    
+                    this.userAvatar.src = this.currentUser.avatar_url;
+                    this.userName.textContent = this.currentUser.name || this.currentUser.login;
+                    this.userHandle.textContent = '@' + this.currentUser.login;
+                    
+                    this.updateFeedMessage();
+                } else {
+                    this.authSection.classList.remove('hidden');
+                    this.userInfo.classList.add('hidden');
+                    this.composeSection.classList.add('hidden');
+                }
+            }
+
+            logout() {
+                localStorage.removeItem('github_user');
+                localStorage.removeItem('access_token');
+                this.currentUser = null;
+                this.updateAuthState();
+                this.showNotification('Signed out successfully!');
+            }
+
+            updateCharCount() {
+                const remaining = 280 - this.textarea.value.length;
+                this.charCount.textContent = remaining;
+                this.charCount.classList.toggle('warning', remaining < 20);
+                this.postBtn.disabled = remaining < 0 || this.textarea.value.trim() === '';
+            }
+
+            handleImageUpload(e) {
+                const files = Array.from(e.target.files);
+                this.selectedImages = [];
+                
+                files.forEach((file, index) => {
+                    if (file.type.startsWith('image/') && index < 4) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.selectedImages.push({
+                                file: file,
+                                url: e.target.result,
+                                name: file.name
+                            });
+                            this.renderImagePreviews();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            renderImagePreviews() {
+                this.imagePreview.innerHTML = this.selectedImages.map((image, index) => `
+                    <div class="preview-item">
+                        <img src="${image.url}" alt="${image.name}">
+                        <button type="button" class="remove-image" onclick="microBlog.removeImage(${index})">×</button>
+                    </div>
+                `).join('');
+            }
+
+            removeImage(index) {
+                this.selectedImages.splice(index, 1);
+                this.renderImagePreviews();
+            }
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                const content = this.textarea.value.trim();
+                
+                if (!content || content.length > 280) return;
+                if (!this.currentUser || this.currentUser.login !== this.ALLOWED_USERNAME) {
+                    this.showNotification('Unauthorized user!', 'error');
+                    return;
+                }
+
+                try {
+                    await this.createPost(content, this.selectedImages);
+                    this.textarea.value = '';
+                    this.selectedImages = [];
+                    this.imageUpload.value = '';
+                    this.renderImagePreviews();
+                    this.updateCharCount();
+                    this.showNotification('Status posted successfully!');
+                } catch (error) {
+                    this.showNotification('Failed to post status: ' + error.message, 'error');
+                    console.error('Post error:', error);
+                }
+            }
+
+            async createPost(content, images) {
+                const accessToken = localStorage.getItem('access_token');
+                
+                const postData = {
+                    content: content,
+                    images: images.map(img => ({
+                        name: img.name,
+                        data: img.url.split(',')[1] // Remove data:image/...;base64, prefix
+                    })),
+                    author: {
+                        login: this.currentUser.login,
+                        name: this.currentUser.name || this.currentUser.login,
+                        avatar_url: this.currentUser.avatar_url
+                    }
+                };
+
+                const response = await fetch(`${this.API_BASE_URL}/posts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify(postData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create post');
+                }
+
+                const newPost = await response.json();
+                this.posts.unshift(newPost);
+                this.renderPosts();
+                this.updateStats();
+            }
+
+            async loadPosts() {
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/posts`);
+                    if (response.ok) {
+                        this.posts = await response.json();
+                        this.renderPosts();
+                        this.updateStats();
+                    }
+                } catch (error) {
+                    console.error('Failed to load posts:', error);
+                    // Fallback to demo data for development
+                    this.loadDemoPosts();
+                }
+            }
+
+            loadDemoPosts() {
+                // Demo posts for development/testing
+                this.posts = [
+                    {
+                        id: '1',
+                        content: 'Just set up my new GitHub Pages micro-blog! 🎉 This is going to be awesome for sharing quick updates.',
+                        images: [],
+                        timestamp: new Date(Date.now() - 3600000).toISOString(),
+                        likes: 5,
+                        liked: false,
+                        author: {
+                            login: this.ALLOWED_USERNAME,
+                            name: 'Your Name',
+                            avatar_url: `https://github.com/${this.ALLOWED_USERNAME}.png`
+                        }
+                    },
+                    {
+                        id: '2',
+                        content: 'Working on some exciting new features. Can\'t wait to share more details soon! 💻✨',
+                        images: [],
+                        timestamp: new Date(Date.now() - 7200000).toISOString(),
+                        likes: 12,
+                        liked: false,
+                        author: {
+                            login: this.ALLOWED_USERNAME,
+                            name: 'Your Name',
+                            avatar_url: `https://github.com/${this.ALLOWED_USERNAME}.png`
+                        }
+                    }
+                ];
+                this.renderPosts();
+                this.updateStats();
+            }
+
+            renderPosts() {
+                if (this.posts.length === 0) {
+                    this.updateFeedMessage();
+                    return;
+                }
+
+                this.feed.innerHTML = this.posts.map(post => `
+                    <div class="post" data-post-id="${post.id}">
+                        <div class="post-header">
+                            <img class="post-avatar" src="${post.author.avatar_url}" alt="${post.author.name}">
+                            <div class="post-info">
+                                <h3>${post.author.name}</h3>
+                                <a href="#" class="post-time" onclick="microBlog.showPermalink('${post.id}'); return false;">
+                                    @${post.author.login} · ${this.formatTime(new Date(post.timestamp))}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="post-content">${this.escapeHtml(post.content)}</div>
+                        ${post.images && post.images.length > 0 ? `
+                            <div class="post-images">
+                                ${post.images.map(img => `<img src="${img}" alt="Post image" onclick="window.open('${img}', '_blank')">`).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="post-actions">
+                            <button class="action-btn ${post.liked ? 'liked' : ''}" onclick="microBlog.toggleLike('${post.id}')">
+                                💖 <span>${post.likes}</span>
+                            </button>
+                            <button class="action-btn" onclick="microBlog.sharePost('${post.id}')">
+                                🔗 Share
+                            </button>
+                            ${this.currentUser && this.currentUser.login === this.ALLOWED_USERNAME ? `
+                                <button class="action-btn" onclick="microBlog.deletePost('${post.id}')">
+                                    🗑️ Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            showFeed() {
+                this.currentView = 'feed';
+                this.feed.classList.remove('hidden');
+                this.permalinkView.classList.add('hidden');
+                
+                if (this.currentUser) {
+                    this.composeSection.classList.remove('hidden');
+                }
+                
+                // Update URL without page reload
+                window.history.pushState({}, document.title, this.SITE_URL);
+            }
+
+            async showPermalink(postId) {
+                this.currentView = 'permalink';
+                this.currentPostId = postId;
+                
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) {
+                    // Try to load from API if not in local cache
+                    try {
+                        const response = await fetch(`${this.API_BASE_URL}/posts/${postId}`);
+                        if (response.ok) {
+                            const loadedPost = await response.json();
+                            this.posts.unshift(loadedPost);
+                            this.renderPermalink(loadedPost);
+                        } else {
+                            this.showNotification('Post not found', 'error');
+                            return;
+                        }
+                    } catch (error) {
+                        this.showNotification('Failed to load post', 'error');
+                        return;
+                    }
+                } else {
+                    this.renderPermalink(post);
+                }
+
+                this.feed.classList.add('hidden');
+                this.composeSection.classList.add('hidden');
+                this.permalinkView.classList.remove('hidden');
+                
+                // Update URL
+                const permalinkUrl = `${this.SITE_URL}/status/${postId}`;
+                window.history.pushState({ postId }, `Status by ${post.author.name}`, permalinkUrl);
+                
+                // Load Disqus comments
+                this.loadDisqusComments(postId, permalinkUrl);
+            }
+
+            renderPermalink(post) {
+                this.permalinkPost.innerHTML = `
+                    <div class="post" data-post-id="${post.id}">
+                        <div class="post-header">
+                            <img class="post-avatar" src="${post.author.avatar_url}" alt="${post.author.name}">
+                            <div class="post-info">
+                                <h3>${post.author.name}</h3>
+                                <div class="post-time">@${post.author.login} · ${this.formatDetailedTime(new Date(post.timestamp))}</div>
+                            </div>
+                        </div>
+                        <div class="post-content" style="font-size: 1.3rem; margin-bottom: 24px;">${this.escapeHtml(post.content)}</div>
+                        ${post.images && post.images.length > 0 ? `
+                            <div class="post-images">
+                                ${post.images.map(img => `<img src="${img}" alt="Post image" onclick="window.open('${img}', '_blank')">`).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="post-actions">
+                            <button class="action-btn ${post.liked ? 'liked' : ''}" onclick="microBlog.toggleLike('${post.id}')">
+                                💖 <span>${post.likes}</span>
+                            </button>
+                            <button class="action-btn" onclick="microBlog.sharePost('${post.id}')">
+                                🔗 Share
+                            </button>
+                            ${this.currentUser && this.currentUser.login === this.ALLOWED_USERNAME ? `
+                                <button class="action-btn" onclick="microBlog.deletePost('${post.id}')">
+                                    🗑️ Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            loadDisqusComments(postId, url) {
+                // Reset Disqus
+                if (window.DISQUS) {
+                    window.DISQUS.reset({
+                        reload: true,
+                        config: function () {
+                            this.page.identifier = postId;
+                            this.page.url = url;
+                        }
+                    });
+                } else {
+                    // Load Disqus for the first time
+                    window.disqus_config = function () {
+                        this.page.url = url;
+                        this.page.identifier = postId;
+                    };
+
+                    const script = document.createElement('script');
+                    script.src = `https://${this.DISQUS_SHORTNAME}.disqus.com/embed.js`;
+                    script.setAttribute('data-timestamp', +new Date());
+                    document.head.appendChild(script);
+                }
+            }
+
+            async toggleLike(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+
+                const wasLiked = post.liked;
+                
+                // Optimistic update
+                if (wasLiked) {
+                    post.likes--;
+                    post.liked = false;
+                } else {
+                    post.likes++;
+                    post.liked = true;
+                    this.showNotification('Post liked!');
+                }
+
+                // Update UI immediately
+                this.updateStats();
+                if (this.currentView === 'feed') {
+                    this.renderPosts();
+                } else {
+                    this.renderPermalink(post);
+                }
+
+                // Send to API
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/posts/${postId}/like`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
+                        },
+                        body: JSON.stringify({ liked: !wasLiked })
+                    });
+
+                    if (!response.ok) {
+                        // Revert on error
+                        if (wasLiked) {
+                            post.likes++;
+                            post.liked = true;
+                        } else {
+                            post.likes--;
+                            post.liked = false;
+                        }
+                        this.updateStats();
+                        if (this.currentView === 'feed') {
+                            this.renderPosts();
+                        } else {
+                            this.renderPermalink(post);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Like error:', error);
+                }
+            }
+
+            sharePost(postId) {
+                const postUrl = `${this.SITE_URL}/status/${postId}`;
+                
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Status Update',
+                        url: postUrl
+                    });
+                } else {
+                    navigator.clipboard.writeText(postUrl).then(() => {
+                        this.showNotification('Link copied to clipboard!');
+                    }).catch(() => {
+                        // Fallback for older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = postUrl;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        this.showNotification('Link copied to clipboard!');
+                    });
+                }
+            }
+
+            async deletePost(postId) {
+                if (!confirm('Are you sure you want to delete this post?')) return;
+
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/posts/${postId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.posts = this.posts.filter(p => p.id !== postId);
+                        this.updateStats();
+                        
+                        if (this.currentView === 'permalink' && this.currentPostId === postId) {
+                            this.showFeed();
+                        } else {
+                            this.renderPosts();
+                        }
+                        
+                        this.showNotification('Post deleted!');
+                    } else {
+                        throw new Error('Failed to delete post');
+                    }
+                } catch (error) {
+                    this.showNotification('Failed to delete post', 'error');
+                    console.error('Delete error:', error);
+                }
+            }
+
+            updateFeedMessage() {
+                if (this.posts.length === 0) {
+                    const message = this.currentUser ? 
+                        '<h3>Ready to post!</h3><p>Share your first status update above.</p>' :
+                        '<h3>Welcome!</h3><p>Sign in with GitHub to start sharing your status updates.</p>';
+                    
+                    this.feed.innerHTML = `<div class="empty-state">${message}</div>`;
+                }
+            }
+
+            updateStats() {
+                this.postCountEl.textContent = this.posts.length;
+                const totalLikes = this.posts.reduce((sum, post) => sum + post.likes, 0);
+                this.likeCountEl.textContent = totalLikes;
+            }
+
+            formatTime(timestamp) {
+                const now = new Date();
+                const diff = now - timestamp;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+
+                if (days > 0) return `${days}d`;
+                if (hours > 0) return `${hours}h`;
+                if (minutes > 0) return `${minutes}m`;
+                return 'now';
+            }
+
+            formatDetailedTime(timestamp) {
+                return timestamp.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            showNotification(message, type = 'success') {
+                this.notification.textContent = message;
+                this.notification.className = `notification ${type}`;
+                this.notification.classList.add('show');
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Initialize the micro blog
+        const microBlog = new GitHubMicroBlog();
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.postId) {
+                microBlog.showPermalink(e.state.postId);
+            } else {
+                microBlog.showFeed();
+            }
+        });
+    </script>
+</body>
+</html>
